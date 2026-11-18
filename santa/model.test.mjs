@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {predict,winner,createModel,trainEpoch,random} from './model.mjs';
+const checkpoint=JSON.parse(readFileSync(new URL('./checkpoint.json',import.meta.url)));
+test('checkpoint gives finite normalized scores throughout the input space',()=>{const rng=random(9);for(let i=0;i<1000;i++){const p=predict(checkpoint,Array.from({length:5},rng));assert.equal(p.length,4);assert.ok(p.every(n=>Number.isFinite(n)&&n>=0&&n<=1));assert.ok(Math.abs(p.reduce((a,b)=>a+b,0)-1)<1e-12);}});
+test('starter responds to contrasting situations with all four actions',()=>{const cases=[[[.4,.1,.9,.1,.9],0],[[.1,.1,.8,.9,.1],1],[[.2,.9,1,.8,.2],2],[[.9,.6,.1,.4,.6],3]];for(const [x,y] of cases)assert.equal(winner(predict(checkpoint,x)),y);});
+test('training learns supplied preferences and leaves starter unchanged',()=>{const original=JSON.stringify(checkpoint),m=createModel(),rng=random(44),data=[{x:[0,0,0,0,0],y:2},{x:[1,1,1,1,1],y:0}];const before=data.reduce((s,e)=>s-Math.log(predict(m,e.x)[e.y]),0);for(let n=0;n<150;n++)trainEpoch(m,data,.05,rng);const after=data.reduce((s,e)=>s-Math.log(predict(m,e.x)[e.y]),0);assert.ok(after<before*.1);for(const e of data)assert.equal(winner(predict(m,e.x)),e.y);assert.equal(JSON.stringify(checkpoint),original);});

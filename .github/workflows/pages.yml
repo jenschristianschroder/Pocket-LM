@@ -40,7 +40,7 @@ jobs:
       - name: Check the embedded numeric checkpoint
         run: node build-model.mjs --check
       - name: Check the language model
-        run: node --test test.mjs ui.test.mjs
+        run: node --test test.mjs ui.test.mjs santa/model.test.mjs santa/ui.test.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Prepare the standalone page
@@ -49,6 +49,8 @@ jobs:
           cp index.html .nojekyll _site/
           cp ui/review.html _site/review.html
           cp -r rap-battle _site/rap-battle
+          mkdir -p _site/santa
+          cp santa/index.html santa/style.css santa/app.mjs santa/model.mjs santa/checkpoint.json _site/santa/
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -57,3 +59,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+

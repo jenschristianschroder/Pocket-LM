@@ -1,0 +1,37 @@
+{
+  "architecture": "5 → 24 tanh → 4 softmax",
+  "parameters": 244,
+  "trainingExamples": 5000,
+  "testExamples": 1500,
+  "epochs": 110,
+  "seed": 25,
+  "loss": 0.008828187334428837,
+  "accuracy": 0.9893333333333333,
+  "confusion": [
+    [
+      145,
+      0,
+      2,
+      0
+    ],
+    [
+      1,
+      190,
+      4,
+      0
+    ],
+    [
+      1,
+      1,
+      566,
+      3
+    ],
+    [
+      0,
+      2,
+      2,
+      583
+    ]
+  ],
+  "provenance": "Generated numeric scenarios with synthetic preference labels. No external dataset. Test measures agreement with the synthetic teacher, not real delivery quality."
+}
