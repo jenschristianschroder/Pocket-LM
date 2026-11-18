@@ -50,7 +50,7 @@ jobs:
           cp ui/review.html _site/review.html
           cp -r rap-battle _site/rap-battle
           mkdir -p _site/santa
-          cp santa/index.html santa/style.css santa/app.mjs santa/model.mjs santa/mission.mjs santa/challenge.mjs santa/checkpoint.json _site/santa/
+          cp santa/index.html santa/style.css santa/app.mjs santa/model.mjs santa/mission.mjs santa/challenge.mjs santa/animation.mjs santa/checkpoint.json _site/santa/
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:

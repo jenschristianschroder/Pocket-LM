@@ -1,10 +1,13 @@
-import {setupChallenge} from './challenge.mjs';
+import {createAnimator} from './animation.mjs';
+import {setupChallenge} from './challenge.mjs?v=3';
 import {ACTIONS,createModel,predict,winner,trainEpoch,random} from './model.mjs';
 const $=id=>document.getElementById(id);
 const fields=[['Time until sunrise','Plenty of time','6 hours',.65,v=>`${Math.round(v*360)} min`,'Sunrise now'],['Snowstorm strength','Clear skies','Blizzard',.25,v=>`${Math.round(v*100)}%`],['Reindeer energy','Exhausted','Full of beans',.75,v=>`${Math.round(v*100)}%`],['Present width','Tiny gift','Huge surprise',.3,v=>`${Math.round(10+v*90)} cm`],['Chimney width','Narrow','Roomy',.7,v=>`${Math.round(10+v*90)} cm`]];
-let x=fields.map(f=>f[3]),starter,custom,examples=[],busy=false,animationTimer,house=1;
+let x=fields.map(f=>f[3]),starter,custom,examples=[],busy=false,house=1;
 let missionUI,missionLocked=false,sceneModel=null;
 const world=document.querySelector('.world');
+let animationBusy=false;
+const animator=createAnimator(world,{onBusy:value=>{animationBusy=value;$('act').disabled=value||missionLocked||!(custom||starter);}});
 fields.forEach(([name,lo,hi,value,format,zero],i)=>{
  const el=document.createElement('div');el.className='slider';el.innerHTML=`<label for="input-${i}">${name}<output id="value-${i}" for="input-${i}"></output></label><input id="input-${i}" type="range" min="0" max="100" value="${value*100}"><div class="range-ends"><span>${zero||lo}</span><span>${hi}</span></div>`;
  $('sliders').append(el);$(`input-${i}`).addEventListener('input',e=>{x[i]=Number(e.target.value)/100;resetAnimation();render();});
@@ -13,13 +16,13 @@ ACTIONS.forEach((name,i)=>{
  const row=document.createElement('div');row.className='score';row.id=`score-${i}`;row.innerHTML=`<div class="score-label"><span>${name}</span><span id="percent-${i}"></span></div><div class="track"><div id="bar-${i}" class="fill"></div></div>`;$('scores').append(row);
  const button=document.createElement('button');button.textContent=name;button.addEventListener('click',()=>{examples.push({x:[...x],y:i});updateTeaching();$('training-status').textContent=`Example ${examples.length} saved: ${name}. Change the situation to teach another.`;});$('labels').append(button);
 });
-function resetAnimation(){clearTimeout(animationTimer);world.className='world';$('outcome').textContent='Move the sliders to see what Santa would do.';}
+function resetAnimation(){animator.cancel();$('outcome').textContent='Move the sliders to see what Santa would do.';}
 function render(){
  fields.forEach((f,i)=>{$(`value-${i}`).textContent=f[4](x[i]);$(`input-${i}`).value=Math.round(x[i]*100);});
- $('snow').setAttribute('opacity',.12+x[1]*.8);$('chimney').style.transform=`translate(${480*(1-(.6+x[4]*.6))}px,0) scaleX(${.6+x[4]*.6})`;
+ $('snow').setAttribute('opacity',.12+x[1]*.8);world.style.setProperty('--snow-speed',`${10-x[1]*7}s`);world.style.setProperty('--gift-scale',.65+x[3]*.7);$('chimney').style.transform=`translate(${480*(1-(.6+x[4]*.6))}px,0) scaleX(${.6+x[4]*.6})`;
  const m=sceneModel||($('brain').value==='custom'?custom:starter);if(!m)return;
  const p=predict(m,x),best=winner(p);$('decision').textContent=ACTIONS[best];$('model-name').textContent=($('brain').value==='custom'?'YOUR SANTA':'STARTER SANTA')+' WOULD…';
- p.forEach((v,i)=>{$(`percent-${i}`).textContent=`${(v*100).toFixed(1)}%`;$(`bar-${i}`).style.width=`${v*100}%`;$(`score-${i}`).classList.toggle('best',i===best);});$('act').disabled=missionLocked;
+ p.forEach((v,i)=>{$(`percent-${i}`).textContent=`${(v*100).toFixed(1)}%`;$(`bar-${i}`).style.width=`${v*100}%`;$(`score-${i}`).classList.toggle('best',i===best);});$('act').disabled=missionLocked||animationBusy;
 }
 function updateTeaching(){
  const counts=ACTIONS.map((_,i)=>examples.filter(e=>e.y===i).length);
@@ -29,7 +32,7 @@ function updateTeaching(){
  $('new-house').disabled=missionLocked;document.querySelectorAll('#sliders input').forEach(el=>el.disabled=missionLocked);missionUI?.refresh();
 }
 $('new-house').addEventListener('click',()=>{x=fields.map(()=>Math.round(Math.random()*100)/100);house++;$('house-name').textContent=`${String(house).padStart(2,'0')} / ${['SNOWDROP COTTAGE','GINGERBREAD LANE','MISTLETOE HOUSE','STARLIGHT CABIN'][((house-1)%4)]}`;resetAnimation();render();$('scene-note').textContent='A new house. A new dilemma.';});
-$('act').addEventListener('click',()=>{resetAnimation();const a=winner(predict($('brain').value==='custom'?custom:starter,x));void world.offsetWidth;world.classList.add(`acting-${a}`);$('outcome').textContent=['Santa heads for the chimney. Hopefully the wrapping survives.','Santa takes the present to the front door. A slightly less sooty Christmas.','Santa flies on to another house. This one will have to wait.','A carrot break for the reindeer. Even Christmas magic needs a rest.'][a];animationTimer=setTimeout(()=>world.className='world',3000);});
+$('act').addEventListener('click',()=>{const a=winner(predict($('brain').value==='custom'?custom:starter,x));animator.play(a,['Santa delivers the present down the chimney.','Santa leaves the present at the front door.','Santa flies onward to the next rooftop.','A carrot break restores the reindeer’s spirits.'][a],true);});
 $('undo').addEventListener('click',()=>{examples.pop();updateTeaching();$('training-status').textContent='Last example removed. Existing trained models are unchanged.';});
 $('clear').addEventListener('click',()=>{examples=[];updateTeaching();$('training-status').textContent='Teaching examples cleared. Existing trained models are still available.';});
 $('brain').addEventListener('change',()=>{resetAnimation();render();});
@@ -44,8 +47,8 @@ $('train').addEventListener('click',async()=>{
 missionUI=setupChallenge({
  getModel:kind=>kind==='custom'?custom:starter,isTraining:()=>busy,
  lock:value=>{missionLocked=value;if(!value)sceneModel=null;updateTeaching();render();},
- setScene:(values,name,m)=>{x=[...values];sceneModel=m;$('house-name').textContent=name;render();},
- animate:(action,message,delivered)=>{resetAnimation();void world.offsetWidth;world.classList.add(`acting-${action}`);world.classList.toggle('delivery-failed',!delivered);$('outcome').textContent=message;animationTimer=setTimeout(()=>world.className='world',1500);},
+ setScene:(values,name,m)=>{animator.cancel();x=[...values];sceneModel=m;$('house-name').textContent=name;render();},
+ animate:(...args)=>animator.play(...args),cancelAnimation:()=>animator.cancel(),
  teach:(values,y)=>{examples.push({x:[...values],y});updateTeaching();$('training-status').textContent=`${examples.length} examples saved. Finish practice or return to free practice, then train My Santa.`;}
 });
 render();
