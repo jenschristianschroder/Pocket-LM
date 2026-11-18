@@ -11,5 +11,16 @@ test('sliders, teaching, training, model switching and animations work',async()=
  assert.equal($('brain').value,'custom');assert.match($('training-status').textContent,/ready/);assert.equal($('brain').disabled,false);
  $('brain').value='starter';$('brain').dispatchEvent(new dom.window.Event('change'));assert.match($('model-name').textContent,/STARTER/);
  $('act').click();assert.match(document.querySelector('.world').className,/acting-/);$('new-house').click();assert.equal(document.querySelector('.world').className,'world');
- $('undo').click();assert.match($('sample-count').textContent,/7 teaching/);$('clear').click();assert.equal($('train').disabled,true);dom.window.close();
+ $('run-starter').click();assert.equal($('input-0').disabled,true);assert.equal($('train').disabled,true);
+ for(let i=0;i<30&&!$('next-turn').disabled;i++)$('next-turn').click();
+ assert.match($('mission-result').textContent,/Sunrise!/);assert.equal($('mission-count').textContent,'5 / 8');assert.equal($('input-0').disabled,false);
+ $('clear').click();$('practice').click();
+ const choices=[0,1,0,1,0,1,3,0,1];for(const action of choices)document.querySelectorAll('#practice-actions button')[action].click();
+ assert.match($('mission-result').textContent,/Practice complete/);assert.equal($('mission-count').textContent,'8 / 8');assert.equal($('mission-time').textContent,'8 min');assert.equal($('train').disabled,false);
+ $('train').click();for(let i=0;i<500&&$('train').disabled;i++)await new Promise(r=>setTimeout(r,10));
+ $('run-custom').click();for(let i=0;i<30&&!$('next-turn').disabled;i++)$('next-turn').click();
+ assert.match($('mission-result').textContent,/Christmas saved/);assert.equal($('mission-count').textContent,'8 / 8');assert.equal($('mission-time').textContent,'8 min');
+ document.querySelector('#mission-log button').click();assert.equal($('input-0').disabled,false);
+ $('exit-route').click();$('new-house').click();
+ $('undo').click();assert.match($('sample-count').textContent,/8 teaching/);$('clear').click();assert.equal($('train').disabled,true);dom.window.close();
 });
